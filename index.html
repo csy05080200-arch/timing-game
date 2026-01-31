@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <title>클릭 타이밍 게임</title>
   <style>
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-top: 60px;
-      font-family: Arial, sans-serif;
-    }
+     body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+
 
     #game {
       width: 400px;
@@ -40,10 +42,32 @@
       margin-top: 20px;
       font-size: 18px;
     }
+
+    #container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+
+    /* 💥 흔들림 효과 */
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
+
+    .shake {
+      animation: shake 0.15s;
+    }
   </style>
+
 </head>
 <body>
 
+  <div id="container">
   <h2>가운데에서 클릭하세요!</h2>
 
   <div id="game">
@@ -52,6 +76,8 @@
   </div>
 
   <div id="score">점수: 0</div>
+</div>
+
 
   <script>
     const bar = document.getElementById("bar");
@@ -74,16 +100,27 @@
       requestAnimationFrame(moveBar);
     }
 
-    game.addEventListener("click", () => {
-      if (position >= 160 && position <= 240) {
-        score++;
-        speed += 0.5;
-        scoreText.textContent = "점수: " + score;
-      } else {
-        alert("실패! 점수: " + score);
-        location.reload();
-      }
-    });
+   game.addEventListener("click", () => {
+  if (position >= 160 && position <= 240) {
+    score++;
+    speed += 0.5;
+    scoreText.textContent = "점수: " + score;
+
+    // 📳 휴대폰 진동
+    if (navigator.vibrate) {
+      navigator.vibrate(80);
+    }
+
+    // 💥 화면 흔들림
+    game.classList.add("shake");
+    setTimeout(() => game.classList.remove("shake"), 150);
+
+  } else {
+    alert("실패! 점수: " + score);
+    location.reload();
+  }
+});
+
 
     moveBar();
   </script>
