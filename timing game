@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>클릭 타이밍 게임</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 60px;
+      font-family: Arial, sans-serif;
+    }
+
+    #game {
+      width: 400px;
+      height: 40px;
+      border: 2px solid #333;
+      position: relative;
+      cursor: pointer;
+    }
+
+    #target {
+      position: absolute;
+      left: 160px;
+      width: 80px;
+      height: 100%;
+      background: #6ee7b7;
+    }
+
+    #bar {
+      position: absolute;
+      width: 10px;
+      height: 100%;
+      background: #111;
+      left: 0;
+    }
+
+    #score {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>가운데에서 클릭하세요!</h2>
+
+  <div id="game">
+    <div id="target"></div>
+    <div id="bar"></div>
+  </div>
+
+  <div id="score">점수: 0</div>
+
+  <script>
+    const bar = document.getElementById("bar");
+    const game = document.getElementById("game");
+    const scoreText = document.getElementById("score");
+
+    let position = 0;
+    let speed = 2;
+    let direction = 1;
+    let score = 0;
+
+    function moveBar() {
+      position += speed * direction;
+
+      if (position <= 0 || position >= 390) {
+        direction *= -1;
+      }
+
+      bar.style.left = position + "px";
+      requestAnimationFrame(moveBar);
+    }
+
+    game.addEventListener("click", () => {
+      if (position >= 160 && position <= 240) {
+        score++;
+        speed += 0.5;
+        scoreText.textContent = "점수: " + score;
+      } else {
+        alert("실패! 점수: " + score);
+        location.reload();
+      }
+    });
+
+    moveBar();
+  </script>
+
+</body>
+</html>
