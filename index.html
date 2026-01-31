@@ -74,6 +74,93 @@
     .shake {
       animation: shake 0.15s;
     }
+    @keyframes megaSparkle {
+  0% {
+    transform: scale(1);
+    color: #000;
+    text-shadow: none;
+  }
+  30% {
+    transform: scale(1.4) rotate(-5deg);
+    color: #f59e0b;
+    text-shadow: 0 0 12px gold, 0 0 24px gold;
+  }
+  60% {
+    transform: scale(1.4) rotate(5deg);
+    color: #facc15;
+    text-shadow: 0 0 18px gold, 0 0 30px gold;
+  }
+  100% {
+    transform: scale(1);
+    color: #000;
+    text-shadow: none;
+  }
+}
+
+.mega-sparkle {
+  animation: megaSparkle 0.8s ease-in-out;
+}
+  .firework {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: firework 1s ease-out forwards;
+}
+
+@keyframes firework {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--x), var(--y)) scale(0.3);
+    opacity: 0;
+  }
+}
+@keyframes scoreDamage {
+  0% {
+    transform: scale(1);
+    color: #000;
+  }
+  30% {
+    transform: scale(1.3);
+    color: #ef4444; /* 빨간색 */
+  }
+  60% {
+    transform: scale(1.3);
+    color: #ef4444;
+  }
+  100% {
+    transform: scale(1);
+    color: #000;
+  }
+}
+/* 🔴 점수 감소 파편 */
+.damage-particle {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  background: #ef4444;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: damageParticle 0.6s ease-out forwards;
+}
+
+@keyframes damageParticle {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--x), var(--y)) scale(0.2);
+    opacity: 0;
+  }
+}
+.score-damage {
+  animation: scoreDamage 0.4s ease;
+}
   </style>
 </head>
 
@@ -100,42 +187,60 @@ document.addEventListener("DOMContentLoaded", () => {
   const target = document.getElementById("target");
   const highScoreText = document.getElementById("highScore");
 
-  // 저장된 최고점수 불러오기
+  /* ===== 최고 점수 불러오기 ===== */
   let highScore = localStorage.getItem("highScore")
     ? Number(localStorage.getItem("highScore"))
     : 0;
 
   highScoreText.textContent = "👑 최고점수: " + highScore;
 
-
-
+  /* ===== 성공 사운드 ===== */
   function playSuccessSound() {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
-  oscillator.type = "triangle";   // 🔔 띵 느낌 핵심
-  oscillator.frequency.value = 660; // 너무 높지 않게
+    osc.type = "triangle";   // 🔔 띵 소리
+    osc.frequency.value = 660;
 
-  gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(
-    0.001,
-    audioCtx.currentTime + 0.35   // 여운
-  );
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
 
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
 
-  oscillator.start();
-  oscillator.stop(audioCtx.currentTime + 0.35);
-}
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.35);
+  }
 
+  /* ===== 점수 감소 파편 ===== */
+  function launchDamageParticles() {
+    const rect = scoreText.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
 
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement("div");
+      p.className = "damage-particle";
+
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * 80 + 30;
+
+      p.style.left = centerX + "px";
+      p.style.top = centerY + "px";
+      p.style.setProperty("--x", Math.cos(angle) * distance + "px");
+      p.style.setProperty("--y", Math.sin(angle) * distance + "px");
+
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 600);
+    }
+  }
+
+  /* ===== 바 이동 ===== */
   let position = 0;
   let speed = 2;
   let direction = 1;
   let score = 0;
-
   let reachedRight = false;
 
   function moveBar() {
@@ -152,6 +257,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (reachedRight) {
         score = Math.max(0, score - 1);
         scoreText.textContent = "점수: " + score;
+
+        // 🔴 점수 강조 + 파편
+        scoreText.classList.add("score-damage");
+        setTimeout(() => {
+          scoreText.classList.remove("score-damage");
+        }, 400);
+
+        launchDamageParticles();
         reachedRight = false;
       }
     }
@@ -160,7 +273,8 @@ document.addEventListener("DOMContentLoaded", () => {
     requestAnimationFrame(moveBar);
   }
 
-  document.addEventListener("click", () => {
+  /* ===== 성공 / 실패 판정 ===== */
+  function checkHit() {
     const targetLeft = target.offsetLeft;
     const targetRight = targetLeft + target.offsetWidth;
 
@@ -169,30 +283,36 @@ document.addEventListener("DOMContentLoaded", () => {
       speed += 0.5;
       scoreText.textContent = "점수: " + score;
 
-      playSuccessSound(); // 🔊 성공 소리
+      playSuccessSound();
 
-      const maxPosition = 400 - 80;
-      target.style.left = Math.random() * maxPosition + "px";
+      target.style.left = Math.random() * (400 - 80) + "px";
 
-      if (navigator.vibrate) {
-        navigator.vibrate(80);
-      }
+      if (navigator.vibrate) navigator.vibrate(80);
 
       game.classList.add("shake");
       setTimeout(() => game.classList.remove("shake"), 150);
 
     } else {
+      // 최고점수 갱신
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("highScore", highScore);
+        highScoreText.textContent = "👑 최고점수: " + highScore;
+      }
 
-  if (score > highScore) {
-    highScore = score;
-    localStorage.setItem("highScore", highScore);
-    highScoreText.textContent = "👑 최고점수: " + highScore;
+      alert("게임 종료!\n점수: " + score);
+      location.reload();
+    }
   }
 
-  alert("게임 종료!\n점수: " + score);
-  location.reload();
-}
+  /* ===== 입력 ===== */
+  document.addEventListener("click", checkHit);
 
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      checkHit();
+    }
   });
 
   moveBar();
