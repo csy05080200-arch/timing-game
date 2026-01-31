@@ -3,16 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <title>클릭 타이밍 게임</title>
-  <style>
-     body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-    font-family: Arial, sans-serif;
-  }
 
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
     #game {
       width: 400px;
@@ -27,7 +33,8 @@
       left: 160px;
       width: 80px;
       height: 100%;
-      background: #6ee7b7;
+      background: rgba(110, 231, 183, 0.4);
+      pointer-events: none;
     }
 
     #bar {
@@ -43,14 +50,19 @@
       font-size: 18px;
     }
 
-    #container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    #rule {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #555;
+    }
+
+    #highScore {
+      margin-bottom: 12px;
+      font-size: 18px;
+      font-weight: bold;
     }
 
 
-    /* 💥 흔들림 효과 */
     @keyframes shake {
       0% { transform: translateX(0); }
       25% { transform: translateX(-5px); }
@@ -63,67 +75,128 @@
       animation: shake 0.15s;
     }
   </style>
-
 </head>
+
 <body>
-
   <div id="container">
-  <h2>가운데에서 클릭하세요!</h2>
 
-  <div id="game">
-    <div id="target"></div>
-    <div id="bar"></div>
+    <div id="highScore">👑 최고점수: 0</div>
+
+    <div id="game">
+      <div id="target"></div>
+      <div id="bar"></div>
+    </div>
+
+    <div id="score">점수: 0</div>
+<p id="rule">※ 검정색 바가 왼쪽 끝에 닿으면 점수가 1점 감소합니다.</p>
+
   </div>
-
-  <div id="score">점수: 0</div>
-</div>
-
-
   <script>
-    const bar = document.getElementById("bar");
-    const game = document.getElementById("game");
-    const scoreText = document.getElementById("score");
+document.addEventListener("DOMContentLoaded", () => {
 
-    let position = 0;
-    let speed = 2;
-    let direction = 1;
-    let score = 0;
+  const bar = document.getElementById("bar");
+  const game = document.getElementById("game");
+  const scoreText = document.getElementById("score");
+  const target = document.getElementById("target");
+  const highScoreText = document.getElementById("highScore");
 
-    function moveBar() {
-      position += speed * direction;
+  // 저장된 최고점수 불러오기
+  let highScore = localStorage.getItem("highScore")
+    ? Number(localStorage.getItem("highScore"))
+    : 0;
 
-      if (position <= 0 || position >= 390) {
-        direction *= -1;
+  highScoreText.textContent = "👑 최고점수: " + highScore;
+
+
+
+  function playSuccessSound() {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+
+  oscillator.type = "triangle";   // 🔔 띵 느낌 핵심
+  oscillator.frequency.value = 660; // 너무 높지 않게
+
+  gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(
+    0.001,
+    audioCtx.currentTime + 0.35   // 여운
+  );
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+
+  oscillator.start();
+  oscillator.stop(audioCtx.currentTime + 0.35);
+}
+
+
+  let position = 0;
+  let speed = 2;
+  let direction = 1;
+  let score = 0;
+
+  let reachedRight = false;
+
+  function moveBar() {
+    position += speed * direction;
+
+    if (position >= 390) {
+      direction = -1;
+      reachedRight = true;
+    }
+
+    if (position <= 0) {
+      direction = 1;
+
+      if (reachedRight) {
+        score = Math.max(0, score - 1);
+        scoreText.textContent = "점수: " + score;
+        reachedRight = false;
+      }
+    }
+
+    bar.style.left = position + "px";
+    requestAnimationFrame(moveBar);
+  }
+
+  document.addEventListener("click", () => {
+    const targetLeft = target.offsetLeft;
+    const targetRight = targetLeft + target.offsetWidth;
+
+    if (position >= targetLeft && position <= targetRight) {
+      score++;
+      speed += 0.5;
+      scoreText.textContent = "점수: " + score;
+
+      playSuccessSound(); // 🔊 성공 소리
+
+      const maxPosition = 400 - 80;
+      target.style.left = Math.random() * maxPosition + "px";
+
+      if (navigator.vibrate) {
+        navigator.vibrate(80);
       }
 
-      bar.style.left = position + "px";
-      requestAnimationFrame(moveBar);
-    }
+      game.classList.add("shake");
+      setTimeout(() => game.classList.remove("shake"), 150);
 
-   game.addEventListener("click", () => {
-  if (position >= 160 && position <= 240) {
-    score++;
-    speed += 0.5;
-    scoreText.textContent = "점수: " + score;
+    } else {
 
-    // 📳 휴대폰 진동
-    if (navigator.vibrate) {
-      navigator.vibrate(80);
-    }
-
-    // 💥 화면 흔들림
-    game.classList.add("shake");
-    setTimeout(() => game.classList.remove("shake"), 150);
-
-  } else {
-    alert("실패! 점수: " + score);
-    location.reload();
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem("highScore", highScore);
+    highScoreText.textContent = "👑 최고점수: " + highScore;
   }
+
+  alert("게임 종료!\n점수: " + score);
+  location.reload();
+}
+
+  });
+
+  moveBar();
 });
-
-
-    moveBar();
-  </script>
-
+</script>
 </body>
 </html>
